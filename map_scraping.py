@@ -1,55 +1,46 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-import random
-import time
-import datetime
+from base import WebScrapingBase
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.keys import Keys
-from selenium import webdriver
-from selenium.webdriver.common.action_chains import ActionChains
-import pyperclip
-
-chrome_options = Options()
-chrome_options.add_argument("--disable-popup-blocking")
-chrome_options.add_experimental_option("debuggerAddress", "localhost:9222")
-driver = webdriver.Chrome(options=chrome_options)
-# /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222
-current_url = driver.current_url
-print("Current URL: ", current_url)
+from selenium.webdriver.support.wait import WebDriverWait
 
 
-def copy_info(item):
-    ele = driver.find_elements(By.XPATH, f"//*[@aria-label='{item}']")
-    data = None
-    if len(ele) > 0:
-        actions.click(ele[0]).perform()
-        data = pyperclip.paste()
-    return data
+def scraping_web_url():
+    url_info = driver.find_elements("copy_web")
+    if url_info:
+        return driver.get_attritue(url_info[0], "href")
+    return None
 
 
-store_info = driver.find_elements(By.XPATH, '//*[@class="hfpxzc"]')
-target = []
-actions = ActionChains(driver)
-for store in store_info:
-    url = store.get_attribute("href")
-    target.append(url)
-for i, url in enumerate(target):
-    driver.execute_script(f"window.open('{url}');")
-    handles = driver.window_handles
-    driver.switch_to.window(handles[-1])
-    name = driver.find_element(By.XPATH, '//*[@class="a5H0ec"]/..').text
-    print(name)
-    address = copy_info("複製地址")
-    print(address)
-    web_site = copy_info("複製網站")
-    print(web_site)
-    phone_num = copy_info("複製電話號碼")
-    print(phone_num)
+def scraping_address():
+    address_info = driver.find_elements("store_address")
+    if address_info:
+        address = driver.get_attritue(address_info[0], "aria-label")
+        return address
+    return None
 
-    driver.close()
-    driver.switch_to.window(handles[0])
-    if i == 5:
-        break
-print(handles)
+
+def scraping_phone():
+    phone_info = driver.find_elements("store_phone")
+    if phone_info:
+        phone = phone_info[0].text
+        return phone
+    return None
+
+
+if __name__ == "__main__":
+    driver = WebScrapingBase()
+    current_url = driver.current_url()
+    print("Current URL: ", current_url)
+    store_info = driver.find_elements("search_list")
+    for store in store_info:
+        driver.click(store)
+        driver.web_wait()
+        label = driver.get_attritue(store, "aria-label")
+        driver.wait.until(lambda d: label == driver.find_element("store_name").text)
+        address = scraping_address()
+        phone = scraping_phone()
+        url = scraping_web_url()
+        print(f"\nStore name : {label}")
+        print(f"URL : {url}")
+        print(f"Address : {address}")
+        print(f"Phone : {phone}")

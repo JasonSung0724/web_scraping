@@ -1,0 +1,7 @@
+{
+    "search_list" : {"method": "xpath", "value" : "//*[@class='hfpxzc']"},
+    "store_name" : {"method" : "xpath", "value" : "//*[@class='DUwDvf lfPIob']"},
+    "copy_web" : {"method" : "xpath", "value" : "//*[@data-tooltip='開啟網站']"},
+    "store_phone" : {"method" : "xpath", "value" : "//*[@data-tooltip='複製電話號碼']"},
+    "store_address" : {"method" : "xpath", "value" : "//*[@data-item-id='address']"}
+}

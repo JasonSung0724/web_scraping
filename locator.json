@@ -1,82 +1,62 @@
 {
     "search_bar": {
-        "method": "id",
         "value": "searchboxinput"
     },
     "search_list": {
-        "method": "xpath",
         "value": "//*[@class='hfpxzc']"
     },
     "store_name": {
-        "method": "xpath",
         "value": "//*[@class='a5H0ec']/.."
     },
     "copy_web": {
-        "method": "xpath",
         "value": "//*[@aria-label='Copy website']"
     },
     "store_phone": {
-        "method": "xpath",
         "value": "//*[@data-tooltip='Copy phone number']"
     },
     "store_address": {
-        "method": "xpath",
         "value": "//*[@data-item-id='address']"
     },
     "share_entry": {
-        "method": "xpath",
         "value": "//*[@data-value='Share']/span/span"
     },
     "share_link": {
-        "method": "xpath",
         "value": "//*[@class='vrsrZe']"
     },
     "detail_layout": {
-        "method": "xpath",
         "value": "//*[@class='m6QErb DxyBCb kA9KIf dS8AEf XiKgde ']"
     },
     "close_window": {
-        "method": "xpath",
         "value": "//*[@aria-label='Close']"
     },
     "share_window": {
-        "method": "xpath",
         "value": "//*[@class='kARmKf']"
     },
     "detail_load": {
-        "method": "xpath",
         "value": "//*[@class='rIWqBe']"
     },
     "detail_close": {
-        "method": "xpath",
         "value": "//*[@jsname='s3Eaab']"
     },
     "multi_search_result": {
-        "method": "xpath",
         "value": "//*[@class='m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd ']"
     },
     "main_store_detail": {
-        "method": "xpath",
         "value": "//*[contains(@class, 'm6QErb WNBkOb XiKgde ') and @role='main']"
     },
     "bottom_of_list": {
-        "method": "xpath",
         "value": "//*[@class='HlvSq']"
     },
     "google_score": {
-        "method": "xpath",
         "value": "//*[@class='F7nice ']"
     },
     "avg_expenses": {
-        "method": "xpath",
         "value": "//*[@jsname='tJHJj']"
     },
     "zoom_out": {
-        "method": "xpath",
         "value": "(//*[@class='qxwljb'])[2]"
     },
     "search_this_area": {
-        "method": "xpath",
         "value": "//*[@class='Tc0rEd PCUzIf']"
     }
 }

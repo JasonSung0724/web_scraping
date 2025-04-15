@@ -1,6 +1,7 @@
 from playwright.async_api import async_playwright, ElementHandle
 import json
 import time
+import asyncio
 
 
 class PlaywrightBase:
@@ -49,7 +50,7 @@ class PlaywrightBase:
         await self.browser.close()
 
     async def sleep(self, sec):
-        return time.sleep(sec)
+        return asyncio.sleep(sec)
 
     def get_locator(self, ele_key):
         try:

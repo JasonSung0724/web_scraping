@@ -24,8 +24,8 @@ class GoogleMapScraping(PlaywrightBase):
         await self.direct_url(url=map_url_for_region, page_id=pid)
         await page.wait_for_function("() => document.location.href.includes('@')")
         cur_url = await self.current_url(page_id=pid)
-        value = self.extract_coordinates(cur_url)
-        map_url_for_search = f"https://www.google.com.tw/maps/search/{self.keyword_search}/@{value[0]},{value[1]},15z/?hl=en"
+        value, size = self.extract_coordinates(cur_url)
+        map_url_for_search = f"https://www.google.com.tw/maps/search/{self.keyword_search}/@{value[0]},{value[1]},{size}z/?hl=en"
         await self.direct_url(url=map_url_for_search, page_id=pid)
         await self.find_element("search_list", page_id=pid)
         await page.wait_for_function("() => document.location.href.includes('entry')")
@@ -33,11 +33,12 @@ class GoogleMapScraping(PlaywrightBase):
         await self.click("search_this_area", page_id=pid)
 
     def extract_coordinates(self, url):
-        match = re.search(r"@([0-9.]+),([0-9.]+)", url)
+        match = re.search(r"@([0-9.]+),([0-9.]+),([0-9.]+)z", url)
         if match:
             latitude = match.group(1)
             longitude = match.group(2)
-            return [latitude, longitude]
+            size = match.group(3)
+            return [latitude, longitude], size
         else:
             return None, None
 
@@ -87,36 +88,21 @@ class GoogleMapScraping(PlaywrightBase):
                 share_link = None
         return share_link
 
-    async def access_detail(self, store, retry=True):
-        try:
-            await self.click(store)
-            await self.find_element("detail_layout")
-            label = await self.get_attribute(store, "aria-label")
-            if "· Visited link" in label:
-                label = label.replace("· Visited link", "").strip()
-            result = await self.page.wait_for_function(f"() => document.querySelector('store_name').innerText === '{label}'")
-            if result:
-                await self.close_window("detail_window")
-                return True
-            return False
-        except PlaywrightTimeoutError:
-            if retry:
-                return await self.access_detail(store, retry=False)
-
-    async def _is_search_result(self):
-        return await self.find_element("multi_search_result")
-
     async def _bottom_of_list(self):
-        return True if await self.find_elements("bottom_of_list", self.init_page_id) else False
+        bottom_tips_element = await self.find_element("bottom_of_list", self.init_page_id)
+        bottom_tips = await bottom_tips_element.inner_text()
+        return True if "You've reached the end of the list." in bottom_tips else False
 
     async def search_list_scroll_to_bottom(self):
         start_time = time.time()
         bottom = False
         while not bottom:
-            await asyncio.sleep(0.5)
+            await self.sleep(0.5)
             await self.get_page(self.init_page_id).keyboard.press("PageDown")
-            bottom = await self._bottom_of_list()
             await self.click((await self.find_elements("search_list", self.init_page_id))[-1])
+            bottom = await self._bottom_of_list()
+            if bottom:
+                print("Bottom")
             if time.time() - start_time > 60:
                 print("TimeOut")
                 break
@@ -143,18 +129,6 @@ class GoogleMapScraping(PlaywrightBase):
         print(data)
         return data
 
-    async def all_search_result(self, link=True):
-        current_url = await self.current_url(self.init_page_id)
-        print("Current URL: ", current_url)
-        store_info = await self.find_elements("search_list")
-        for store in store_info:
-            try:
-                await self.access_detail(store)
-                await self.scapping_detail_data(link=link)
-            except PlaywrightTimeoutError as e:
-                print(f"Error : {e}")
-                continue
-
     async def get_all_link_from_search_result(self):
         current_url = await self.current_url(self.init_page_id)
         print("Current URL: ", current_url)
@@ -167,13 +141,20 @@ class GoogleMapScraping(PlaywrightBase):
             url_list.append(url)
         return url_list
 
-    async def all_search_result_v2(self, link=True):
+    async def all_search_result_v2(self, link=True, max_concurrent_tasks=10):
         url_list = await self.get_all_link_from_search_result()
+        semaphore = asyncio.Semaphore(max_concurrent_tasks)
         tasks = []
-        for i, url in enumerate(url_list):
-            pid, page = await self.new_page(self.contexts[0])
-            task = asyncio.create_task(self.process_page(pid, url, link))
+
+        async def sem_task(url):
+            async with semaphore:
+                pid, page = await self.new_page(self.contexts[0])
+                await self.process_page(pid, url, link)
+
+        for url in url_list:
+            task = asyncio.create_task(sem_task(url))
             tasks.append(task)
+
         await asyncio.gather(*tasks)
 
     async def process_page(self, pid, url, link):

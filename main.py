@@ -5,7 +5,7 @@ from playwright.async_api import async_playwright
 
 async def main():
     async with async_playwright() as p:
-        scraper = GoogleMapScraping(region="Taipei", keyword_search="Hotpot")
+        scraper = GoogleMapScraping(region="Taipei", keyword_search="Hotels")
         await scraper.setup(p)
         await scraper.all_search_result_v2(link=True)
 

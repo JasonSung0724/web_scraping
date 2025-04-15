@@ -9,7 +9,7 @@
         "value": "//*[@class='a5H0ec']/.."
     },
     "copy_web": {
-        "value": "//*[@aria-label='Copy website']"
+        "value": "//*[@data-tooltip='Open website']"
     },
     "store_phone": {
         "value": "//*[@data-tooltip='Copy phone number']"
@@ -18,7 +18,7 @@
         "value": "//*[@data-item-id='address']"
     },
     "share_entry": {
-        "value": "//*[@data-value='Share']/span/span"
+        "value": "//*[@data-value='Share']"
     },
     "share_link": {
         "value": "//*[@class='vrsrZe']"

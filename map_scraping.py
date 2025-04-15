@@ -7,30 +7,34 @@ import re
 
 class GoogleMapScraping(PlaywrightBase):
 
-    def __init__(self, region, keyword_search):
+    def __init__(self, language, region, keyword_to_search):
         self.region = region
-        self.keyword_search = keyword_search
+        self.keyword_to_search = keyword_to_search
         super().__init__(targets=["GoogleMap"], timeout=10000)
-        self.init_page = None
-        self.init_page_id = None
+        self.language = language.lower()
 
     async def setup(self, playwright):
         await self.launch_browser(playwright)
-        context = await self.new_context()
-        pid, page = await self.new_page(context)
-        self.init_page = page
-        self.init_page_id = pid
-        map_url_for_region = f"https://www.google.com.tw/maps/place/{self.region}/?hl=en"
-        await self.direct_url(url=map_url_for_region, page_id=pid)
-        await page.wait_for_function("() => document.location.href.includes('@')")
-        cur_url = await self.current_url(page_id=pid)
+        for area in self.region:
+            context = await self.new_context()
+            await self.main_scripts(context, link=True)
+
+    async def keyword_search(self, conteext, region, keyword_to_search):
+        page_id, page = self.new_page(conteext)
+        map_url_for_region = f"https://www.google.com.tw/maps/place/{region}/?hl={self.language}"
+        await self.direct_url(url=map_url_for_region, page_id=page_id)
+        await self.get_page(page_id).wait_for_function("() => document.location.href.includes('@')")
+        cur_url = await self.current_url(page_id=page_id)
         value, size = self.extract_coordinates(cur_url)
-        map_url_for_search = f"https://www.google.com.tw/maps/search/{self.keyword_search}/@{value[0]},{value[1]},{size}z/?hl=en"
-        await self.direct_url(url=map_url_for_search, page_id=pid)
-        await self.find_element("search_list", page_id=pid)
-        await page.wait_for_function("() => document.location.href.includes('entry')")
-        await self.click(element="zoom_out", page_id=pid)
-        await self.click("search_this_area", page_id=pid)
+        map_url_for_search = f"https://www.google.com.tw/maps/search/{keyword_to_search}/@{value[0]},{value[1]},{size}z/?hl={self.language}"
+        await self.direct_url(url=map_url_for_search, page_id=page_id)
+        await self.find_element("search_list", page_id=page_id)
+        await self.get_page(page_id).wait_for_function("() => document.location.href.includes('entry')")
+        if int(size) > 15:
+            await self.click(element="zoom_in", page_id=page_id)
+        else:
+            await self.click(element="zoom_out", page_id=page_id)
+        await self.click(await self.wait_for_element("search_this_area", page_id=page_id))
 
     def extract_coordinates(self, url):
         match = re.search(r"@([0-9.]+),([0-9.]+),([0-9.]+)z", url)
@@ -42,13 +46,22 @@ class GoogleMapScraping(PlaywrightBase):
         else:
             return None, None
 
+    def extract_place_id(self, url):
+        try:
+            start = url.index("!1s") + 3
+            end = url.index("!", start)
+            place_id = url[start:end]
+            return place_id
+        except ValueError:
+            return None
+
     async def cleaner(self):
         await self.page.context.clear_cookies()
         await self.page.evaluate("window.localStorage.clear();")
         await self.page.evaluate("window.sessionStorage.clear();")
 
     async def scraping_web_url(self, page_id):
-        url_info = await self.find_element("copy_web", page_id=page_id)
+        url_info = await self.find_element("web_site", page_id=page_id)
         if url_info:
             return await self.get_attribute(url_info, "href")
         return None
@@ -76,7 +89,7 @@ class GoogleMapScraping(PlaywrightBase):
 
     async def scraping_share_link(self, page_id, retry=True, close_share=False):
         try:
-            await self.click("share_entry", page_id=page_id)
+            await self.click("action_share_entry", page_id=page_id)
             share_link_ele = await self.wait_for_element("share_link", page_id=page_id, wait_except="visible")
             share_link = await self.get_attribute(share_link_ele, "value")
         except PlaywrightTimeoutError:
@@ -90,7 +103,7 @@ class GoogleMapScraping(PlaywrightBase):
 
     async def _bottom_of_list(self):
         bottom_tips_element = await self.find_element("bottom_of_list", self.init_page_id)
-        bottom_tips = await bottom_tips_element.inner_text()
+        bottom_tips = await bottom_tips_element.inner_text() if bottom_tips_element else ""
         return True if "You've reached the end of the list." in bottom_tips else False
 
     async def search_list_scroll_to_bottom(self):
@@ -141,14 +154,15 @@ class GoogleMapScraping(PlaywrightBase):
             url_list.append(url)
         return url_list
 
-    async def all_search_result_v2(self, link=True, max_concurrent_tasks=10):
+    async def main_scripts(self, conteext, link=True, max_concurrent_tasks=10):
+        self.keyword_search(conteext)
         url_list = await self.get_all_link_from_search_result()
         semaphore = asyncio.Semaphore(max_concurrent_tasks)
         tasks = []
 
         async def sem_task(url):
             async with semaphore:
-                pid, page = await self.new_page(self.contexts[0])
+                pid, page = await self.new_page(conteext)
                 await self.process_page(pid, url, link)
 
         for url in url_list:
@@ -159,10 +173,11 @@ class GoogleMapScraping(PlaywrightBase):
 
     async def process_page(self, pid, url, link):
         try:
+            place_id = self.extract_place_id(url)
+            print(place_id)
             await self.direct_url(url=url, page_id=pid)
-            await self.get_page(pid).wait_for_function("() => document.readyState === 'complete'")
             await self.find_element("main_store_detail", page_id=pid)
-            await self.scapping_detail_data(pid, link=link)
+            data = await self.scapping_detail_data(pid, link=link)
         except Exception as e:
             print(f"Error processing page {url}: {e}")
         finally:

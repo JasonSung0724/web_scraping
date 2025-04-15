@@ -25,7 +25,7 @@ class PlaywrightBase:
 
     async def launch_browser(self, playwright):
         if not self.browser:
-            self.browser = await playwright.chromium.launch(headless=False)
+            self.browser = await playwright.chromium.launch(headless=True)
         return self.browser
 
     async def new_context(self):
@@ -50,7 +50,7 @@ class PlaywrightBase:
         await self.browser.close()
 
     async def sleep(self, sec):
-        return asyncio.sleep(sec)
+        return await asyncio.sleep(sec)
 
     def get_locator(self, ele_key):
         try:
@@ -71,7 +71,7 @@ class PlaywrightBase:
         value = self.get_locator(ele_name)
         return await self.get_page(page_id=page_id).query_selector_all(value)
 
-    async def wait_for_element(self, element, page_id, wait_except="default"):
+    async def wait_for_element(self, element, page_id, wait_except="visible"):
         value = self.get_locator(element)
         element = await self.get_page(page_id).wait_for_selector(value, state=wait_except)
         return element

@@ -8,17 +8,29 @@
     "store_name": {
         "value": "//*[@class='a5H0ec']/.."
     },
-    "copy_web": {
-        "value": "//*[@data-tooltip='Open website']"
+    "action_route":{
+        "value": "(//*[@class='m6QErb Pf6ghf XiKgde ecceSd tLjsW ']//button)[1]"
+    },
+    "action_save":{
+        "value": "(//*[@class='m6QErb Pf6ghf XiKgde ecceSd tLjsW ']//button)[2]"
+    },
+    "action_nearby":{
+        "value": "(//*[@class='m6QErb Pf6ghf XiKgde ecceSd tLjsW ']//button)[3]"
+    },
+    "action_send_to_phone":{
+        "value": "(//*[@class='m6QErb Pf6ghf XiKgde ecceSd tLjsW ']//button)[4]"
+    },
+    "action_share_entry":{
+        "value": "(//*[@class='m6QErb Pf6ghf XiKgde ecceSd tLjsW ']//button)[5]"
+    },
+    "web_site": {
+        "value": "//*[@data-item-id='authority']"
     },
     "store_phone": {
-        "value": "//*[@data-tooltip='Copy phone number']"
+        "value": "//*[contains(@data-item-id,'phone')]"
     },
     "store_address": {
         "value": "//*[@data-item-id='address']"
-    },
-    "share_entry": {
-        "value": "//*[@data-value='Share']"
     },
     "share_link": {
         "value": "//*[@class='vrsrZe']"
@@ -55,6 +67,9 @@
     },
     "zoom_out": {
         "value": "(//*[@class='qxwljb'])[2]"
+    },
+    "zoom_in": {
+        "value": "(//*[@class='qxwljb'])[1]"
     },
     "search_this_area": {
         "value": "//*[@class='Tc0rEd PCUzIf']"

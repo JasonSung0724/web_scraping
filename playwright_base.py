@@ -25,7 +25,7 @@ class PlaywrightBase:
 
     async def launch_browser(self, playwright):
         if not self.browser:
-            self.browser = await playwright.chromium.launch(headless=True)
+            self.browser = await playwright.chromium.launch(headless=False)
         return self.browser
 
     async def new_context(self):

@@ -4,10 +4,11 @@ from playwright.async_api import async_playwright
 
 
 async def main():
-    async with async_playwright() as p:
-        scraper = GoogleMapScraping(region="Taipei", keyword_search="停車場", language="en")
-        await scraper.setup(p)
-        await scraper.scripts(link=True)
+    async with async_playwright() as browser:
+        scraper = GoogleMapScraping(
+            region=["台北信義區", "台北中山區", "新北三重區", "新北汐止區"], keyword_to_search=["酒吧", "火鍋", "飲料", "便利商店"], language="en"
+        )
+        await scraper.execute(browser)
 
 
 if __name__ == "__main__":

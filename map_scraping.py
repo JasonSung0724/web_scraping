@@ -11,33 +11,33 @@ class GoogleMapScraping(PlaywrightBase):
     def __init__(self, language, region, keyword_to_search, need_share_link=True):
         self.region = region
         self.keyword_to_search = keyword_to_search
-        super().__init__(targets=["GoogleMap"], timeout=10000)
+        super().__init__(targets=["GoogleMap"], timeout=1000 * 60 * 2)
         self.language = language.lower()
         self.need_share_link = need_share_link
         self.data_list = []
 
-    async def execute(self, playwright):
+    async def execute(self, playwright, scraping_method="v1"):
         await self.launch_browser(playwright)
-        semaphore = asyncio.Semaphore(5)
+        semaphore = asyncio.Semaphore(2)
 
         async def run_task(region, keyword):
             async with semaphore:
                 context = await self.new_context()
                 try:
-                    await self.main_scripts(context, link=self.need_share_link, keyword=keyword, region=region)
+                    if scraping_method == "v1":
+                        await self.main_scripts(context, link=self.need_share_link, keyword=keyword, region=region)
                 finally:
                     await context.close()
 
         tasks = [run_task(region, keyword) for region in self.region for keyword in self.keyword_to_search]
         await asyncio.gather(*tasks)
 
-    async def keyword_search(self, conteext, region, keyword):
-        page_id, page = await self.new_page(conteext)
+    async def keyword_search(self, context, region, keyword):
+        page_id, page = await self.new_page(context)
         map_url_for_region = f"https://www.google.com.tw/maps/place/{region}/?hl={self.language}"
         await self.direct_url(url=map_url_for_region, page_id=page_id)
         await self.get_page(page_id).wait_for_function("() => document.location.href.includes('@')")
-        cur_url = await self.current_url(page_id=page_id)
-        value, size = self.extract_coordinates(cur_url)
+        value, size = await self.extract_coordinates(page_id)
         map_url_for_search = f"https://www.google.com.tw/maps/search/{keyword}/@{value[0]},{value[1]},{size}z/?hl={self.language}"
         await self.direct_url(url=map_url_for_search, page_id=page_id)
         await self.find_element("search_list", page_id=page_id)
@@ -49,8 +49,10 @@ class GoogleMapScraping(PlaywrightBase):
         await self.click(await self.wait_for_element("search_this_area", page_id=page_id))
         return page_id
 
-    def extract_coordinates(self, url):
-        match = re.search(r"@([0-9.]+),([0-9.]+),([0-9.]+)z", url)
+    async def extract_coordinates(self, page_id):
+        await self.get_page(page_id).wait_for_function("() => document.location.href.includes('@')")
+        cur_url = await self.current_url(page_id=page_id)
+        match = re.search(r"@([0-9.]+),([0-9.]+),([0-9.]+)z", cur_url)
         if match:
             latitude = match.group(1)
             longitude = match.group(2)
@@ -129,8 +131,7 @@ class GoogleMapScraping(PlaywrightBase):
                 break
 
     async def scapping_detail_data(self, page_id, link=True, close_share=False):
-        current_url = await self.current_url(page_id=page_id)
-        coordinates = self.extract_coordinates(current_url)
+        coordinates = await self.extract_coordinates(page_id)
         address = await self.scraping_address(page_id)
         phone = await self.scraping_phone(page_id)
         web_site_url = await self.scraping_web_url(page_id)
@@ -161,6 +162,11 @@ class GoogleMapScraping(PlaywrightBase):
         print(data)
         return data
 
+    async def get_all_element_for_search_result(self, page_id):
+        await self.search_list_scroll_to_bottom(page_id)
+        search_result_element = await self.find_elements("search_list", page_id)
+        return search_result_element
+
     async def get_all_link_from_search_result(self, page_id):
         current_url = await self.current_url(page_id)
         print("Current URL: ", current_url)
@@ -171,17 +177,19 @@ class GoogleMapScraping(PlaywrightBase):
         for store in store_info:
             url = await self.get_attribute(store, "href")
             url_list.append(url)
+        await self.close_page(page_id=page_id)
         return url_list
 
-    async def main_scripts(self, conteext, region, keyword, link=True, max_concurrent_tasks=10):
-        page_id = await self.keyword_search(conteext=conteext, region=region, keyword=keyword)
+    async def main_scripts(self, context, region, keyword, link=True, max_concurrent_tasks=10):
+        page_id = await self.keyword_search(context=context, region=region, keyword=keyword)
         url_list = await self.get_all_link_from_search_result(page_id)
+        await self.clear_context_cookie(context)
         semaphore = asyncio.Semaphore(max_concurrent_tasks)
         tasks = []
 
         async def sem_task(url):
             async with semaphore:
-                pid, page = await self.new_page(conteext)
+                pid, page = await self.new_page(context)
                 await self.process_page(pid, url, link)
 
         for url in url_list:
@@ -190,6 +198,7 @@ class GoogleMapScraping(PlaywrightBase):
 
         await asyncio.gather(*tasks)
         await self.save_to_json()
+        await context.close()
 
     async def process_page(self, pid, url, link):
         try:

@@ -39,6 +39,9 @@ class PlaywrightBase:
         self.pages.update({str(page_id): page})
         return page_id, page
 
+    async def clear_context_cookie(self, context):
+        await context.clear_cookies()
+
     def remove_page_by_id(self, page_id):
         del self.pages[str(page_id)]
 
@@ -111,7 +114,6 @@ class PlaywrightBase:
 
     async def current_url(self, page_id):
         url = self.get_page(page_id=page_id).url
-        print(f"\n{url}")
         return url
 
     async def direct_url(self, url, page_id):

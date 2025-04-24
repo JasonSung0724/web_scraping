@@ -18,7 +18,7 @@ class GoogleMapScraping(PlaywrightBase):
 
     async def execute(self, playwright, scraping_method="v1"):
         await self.launch_browser(playwright)
-        semaphore = asyncio.Semaphore(2)
+        semaphore = asyncio.Semaphore(5)
 
         async def run_task(region, keyword):
             async with semaphore:
@@ -33,7 +33,7 @@ class GoogleMapScraping(PlaywrightBase):
         await asyncio.gather(*tasks)
 
     async def keyword_search(self, context, region, keyword):
-        page_id, page = await self.new_page(context)
+        page_id = await self.new_page(context)
         map_url_for_region = f"https://www.google.com.tw/maps/place/{region}/?hl={self.language}"
         await self.direct_url(url=map_url_for_region, page_id=page_id)
         await self.get_page(page_id).wait_for_function("() => document.location.href.includes('@')")
@@ -177,7 +177,6 @@ class GoogleMapScraping(PlaywrightBase):
         for store in store_info:
             url = await self.get_attribute(store, "href")
             url_list.append(url)
-        await self.close_page(page_id=page_id)
         return url_list
 
     async def main_scripts(self, context, region, keyword, link=True, max_concurrent_tasks=10):
@@ -189,7 +188,7 @@ class GoogleMapScraping(PlaywrightBase):
 
         async def sem_task(url):
             async with semaphore:
-                pid, page = await self.new_page(context)
+                pid = await self.new_page(context)
                 await self.process_page(pid, url, link)
 
         for url in url_list:

@@ -1,5 +1,4 @@
 from playwright.async_api import async_playwright, ElementHandle
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 import json
 import time
 import asyncio
@@ -29,8 +28,8 @@ class PlaywrightBase:
             self.browser = await playwright.chromium.launch(headless=False)
         return self.browser
 
-    async def new_context(self, session=None):
-        context = await self.browser.new_context(storage_state=session)
+    async def new_context(self):
+        context = await self.browser.new_context()
         self.contexts.append(context)
         return context
 
@@ -38,11 +37,7 @@ class PlaywrightBase:
         page = await context.new_page()
         page_id = id(page)
         self.pages.update({str(page_id): page})
-        return page_id
-    
-    async def reload(self, page_id):
-        await self.get_page(page_id).reload()
-        await self.wait_for_network(page_id=page_id)
+        return page_id, page
 
     async def clear_context_cookie(self, context):
         await context.clear_cookies()
@@ -79,29 +74,24 @@ class PlaywrightBase:
         value = self.get_locator(ele_name)
         return await self.get_page(page_id=page_id).query_selector_all(value)
 
-    async def wait_for_element(self, element, page_id, timeout=None, wait_except="visible"):
-        try:
-            timeout = timeout if timeout else self.timeout
-            value = self.get_locator(element)
-            element = await self.get_page(page_id).wait_for_selector(value, state=wait_except, timeout=timeout)
-            return element
-        except PlaywrightTimeoutError:
-            print(f"Wait for element timeout : {element}")
-            return None
+    async def wait_for_element(self, element, page_id, wait_except="visible"):
+        value = self.get_locator(element)
+        element = await self.get_page(page_id).wait_for_selector(value, state=wait_except)
+        return element
 
     async def wait_for_element_state(self, element, page_id, wait_except="default"):
         if not self._is_ElementHandle(element):
             element = await self.find_element(element, page_id=page_id)
         if wait_except == "visible":
-            return await element.wait_for_element_state("visible")
+            return element.wait_for_element_state("visible")
         elif wait_except == "hidden":
-            return await element.wait_for_element_state("hidden")
+            return element.wait_for_element_state("hidden")
         elif wait_except == "stable":
-            return await element.wait_for_element_state("stable")
+            return element.wait_for_element_state("stable")
         elif wait_except == "enabled":
-            return await element.wait_for_element_state("enabled")
-        elif wait_except == "disab  led":
-            return await element.wait_for_element_state("disabled")
+            return element.wait_for_element_state("enabled")
+        elif wait_except == "disabled":
+            return element.wait_for_element_state("disabled")
 
     async def input_text(self, element, text, page_id=None):
         if not self._is_ElementHandle(element):
@@ -119,10 +109,8 @@ class PlaywrightBase:
         try:
             if element is not None:
                 await element.click(force=True)
-                return element
         except Exception as e:
             print(f"Click Error: {e}")
-            return None
 
     async def current_url(self, page_id):
         url = self.get_page(page_id=page_id).url
@@ -131,6 +119,3 @@ class PlaywrightBase:
     async def direct_url(self, url, page_id):
         await self.get_page(page_id=page_id).goto(url)
         await self.get_page(page_id=page_id).wait_for_load_state("domcontentloaded")
-
-    async def wait_for_network(self, page_id):
-        await self.get_page(page_id=page_id).wait_for_load_state('networkidle')
